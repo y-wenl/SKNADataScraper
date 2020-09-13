@@ -173,6 +173,16 @@ for session in all_sessions:
     with open(member_list_filepaths[session], 'r') as f:
         member_list_datas[session] = json.load(f)
 
+##### Read all the past bills to get the ids of any members missing from the member lists
+
+all_member_ids = {s:set(member_list_datas[s]) for s in all_sessions}
+for session in all_sessions:
+    for filename in [x for x in os.listdir(bill_data_dir) if 'session{}_'.format(session) in x]:
+        filepath = os.path.join(bill_data_dir, filename)
+        with open(filepath, 'r') as f:
+            this_data = json.load(f)
+        this_member_ids = [x['member_id'] for x in (this_data['members_agree'] + this_data['members_oppose'] + this_data['members_abstain'])]
+        all_member_ids[session].update(set(this_member_ids))
 
 ##### Download any missing member info
 
@@ -193,7 +203,7 @@ for session in all_sessions:
 
     existent_member_info_ids = list(member_info_data.keys())
     
-    for member_id in member_list_datas[session]:
+    for member_id in all_member_ids[session]:
         if curdl >= maxdl:
             break
         if not (member_id in member_info_data):
