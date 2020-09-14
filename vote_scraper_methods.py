@@ -149,7 +149,7 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
     total_agree = None
     total_oppose = None
     total_abstain = None
-    result_regex = re.compile('가결\s*([0-9]+)\s*인.*찬성\s*([0-9]+)\s*인.*반대\s*([0-9]+)\s*인.*기권\s*([0-9]+)\s*인')
+    result_regex = re.compile('\s*([0-9]+)\s*인\s*\(.*찬성\s*([0-9]+)\s*인.*반대\s*([0-9]+)\s*인.*기권\s*([0-9]+)\s*인')
     result_search = result_regex.search(soup_summary_result_item.span.text)
     if result_search:
         total_votes = int(result_search.group(1))
@@ -179,7 +179,7 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
     oppose_member_list = [a_to_pair(a) for a in oppose_member_as]
     abstain_member_list = [a_to_pair(a) for a in abstain_member_as]
 
-    #import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     assert(len(agree_member_list) == total_agree)
     assert(len(oppose_member_list) == total_oppose)
     assert(len(abstain_member_list) == total_abstain)

@@ -1,6 +1,8 @@
 #! /usr/bin/python
 
 import os
+import sys
+import traceback
 import re
 import datetime
 import time
@@ -86,7 +88,7 @@ bill_data_filename_template = 'bill_list_data_session{}_no{}_id{}.json'
 
 ##### Download bill vote data
 bill_data_dir = os.path.join(data_dir, 'bills')
-for session in [21]:#all_sessions:
+for session in all_sessions:
     bill_list_data = bill_list_datas[session]
     bill_list = bill_list_data['resListVo']
     for bill in bill_list:
@@ -107,8 +109,10 @@ for session in [21]:#all_sessions:
                 bill_data['committee'] = bill['currcommitte'] if 'currcommitte' in bill else None
                 with open(bill_filepath, 'w') as f:
                     json.dump(bill_data, f, ensure_ascii=False)
-            except:
-                donothing = True # probably some download error...
+            except: # Exception as err:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                print(exc_type)
+                traceback.print_tb(exc_traceback)
 
 ######################################
 
