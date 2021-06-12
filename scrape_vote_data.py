@@ -1,5 +1,8 @@
 #! /usr/bin/python
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 import os
 import sys
 import traceback
@@ -10,10 +13,26 @@ import json
 from assembly_scraper_methods import *
 from copy import copy,deepcopy
 
+import jsbeautifier
+jsb_opts = jsbeautifier.default_options()
+jsb_opts.indent_size = 2
+
 all_sessions = [20, 21]
 current_session = 21
 
 data_dir = 'data'
+bad_bills_log_filename = 'bad_bills_log.json'
+
+bad_bills_log_filepath = os.path.join(data_dir, bad_bills_log_filename)
+# create bad bills log file if it doesn't exist
+if not os.path.isfile(bad_bills_log_filepath):
+    write_data_to_json_file({}, bad_bills_log_filepath)
+
+def write_data_to_json_file(this_data, filepath):
+    with open(filepath, 'w') as f:
+        json_data = json.dumps(this_data, ensure_ascii=False)
+        json_data = jsbeautifier.beautify(json_data, jsb_opts) # beautify
+        f.write(json_data)
 
 ########## Update bill lists ##########
 
@@ -51,12 +70,12 @@ for filename in os.listdir(data_dir):
 curtime = int(time.time())
 for session in bill_sessions_to_dl:
     bill_list_data = scrape_bill_list_data(session)
-    json_data = json.dumps(bill_list_data, ensure_ascii=False)
+
     output_filename = bill_list_data_filename_template.format(session, curtime)
     output_filepath = os.path.join(data_dir, output_filename)
-    with open(output_filepath, 'w') as f:
-        f.write(json_data)
-        print("Saved to {}.".format(output_filepath))
+
+    write_data_to_json_file(bill_list_data, output_filepath)
+    logging.info("Saved to {}.".format(output_filepath))
 
 
 # Load bill_list_data
@@ -78,16 +97,30 @@ for session in all_sessions:
     with open(bill_list_filepaths[session], 'r') as f:
         bill_list_datas[session] = json.load(f)
 
+# read bad bill data (no point in attempting certain of those repeatedly)
+with open(bad_bills_log_filepath, 'r') as f:
+    bad_bills_data = json.load(f)
+
+# bad_bills_to_skip are chosen based on the error message
+bad_bills_to_skip = []
+for bad_bill_id in bad_bills_data:
+    bad_bill = bad_bills_data[bad_bill_id]
+    try:
+        if "assert(len(agree_member_list) == total_agree)" in bad_bill['error'][1]:
+            bad_bills_to_skip.append(bad_bill_id)
+    except:
+        donothing = True
 
 #######################################
 
 ########## Update bill data ##########
 
-bill_data_filename_regex = re.compile('bill_data_session([2-9][0-9])_no([^_]*)_id(.*).json')
-bill_data_filename_template = 'bill_list_data_session{}_no{}_id{}.json'
+# bill_data_filename_regex = re.compile('bill_data_session([2-9][0-9])_no([^_]*)_id(.*).json')
+bill_data_filename_template = 'bill_data_session{}_no{}_id{}.json'
 
 ##### Download bill vote data
 bill_data_dir = os.path.join(data_dir, 'bills')
+# bad_bills_data = {}
 for session in all_sessions:
     bill_list_data = bill_list_datas[session]
     bill_list = bill_list_data['resListVo']
@@ -98,7 +131,7 @@ for session in all_sessions:
 
         bill_filename = bill_data_filename_template.format(session, bill_no, bill_id)
         bill_filepath = os.path.join(bill_data_dir, bill_filename)
-        if not os.path.isfile(bill_filepath):
+        if (not os.path.isfile(bill_filepath)) and (bill_id not in bad_bills_to_skip):
             # scrape data and save
             try:
             #if True:
@@ -110,12 +143,18 @@ for session in all_sessions:
                 bill_data['kind'] = bill['billkindcd']
                 bill_data['committee'] = bill['currcommitte'] if 'currcommitte' in bill else None
 
-                with open(bill_filepath, 'w') as f:
-                    json.dump(bill_data, f, ensure_ascii=False)
+                write_data_to_json_file(bill_data, bill_filepath)
+
+                # it worked, so we can remove it from bad_bills_data
+                bad_bills_data.pop(bill_id, None)
             except: # Exception as err:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                print(exc_type)
+                exc_traceback_str = ''.join(traceback.format_tb(exc_traceback))
+                bad_bills_data[bill_id] = {'session':session, 'bill_no':bill_no, 'bill_id':bill_id, 'id_master':bill_id_master, 'error':[str(exc_type), exc_traceback_str]}
+                logging.info(exc_type)
                 traceback.print_tb(exc_traceback)
+
+write_data_to_json_file(bad_bills_data, bad_bills_log_filepath)
 
 ######################################
 
@@ -154,12 +193,12 @@ for filename in os.listdir(data_dir):
 curtime = int(time.time())
 for session in member_sessions_to_dl:
     member_list_data = scrape_member_list(session)
-    json_data = json.dumps(member_list_data, ensure_ascii=False)
+
     output_filename = member_list_data_filename_template.format(session, curtime)
     output_filepath = os.path.join(data_dir, output_filename)
-    with open(output_filepath, 'w') as f:
-        f.write(json_data)
-        print("Saved to {}.".format(output_filepath))
+
+    write_data_to_json_file(member_list_data, output_filepath)
+    logging.info("Saved to {}.".format(output_filepath))
 
 # Load member_list_data
 member_list_filepaths = {}
@@ -202,8 +241,7 @@ for session in all_sessions:
 
     # create member info files if they don't exist
     if not os.path.isfile(filepath):
-        with open(filepath, 'w') as f:
-            json.dump({}, f)
+        write_data_to_json_file({}, filepath)
 
     with open(filepath, 'r') as f:
         member_info_data = json.load(f)
@@ -224,8 +262,7 @@ for session in all_sessions:
     new_member_info_ids = list(member_info_data.keys())
 
     if len(new_member_info_ids) > len(existent_member_info_ids):
-        print("Saving new member data to {}.".format(filepath))
-        with open(filepath, 'w') as f:
-            json.dump(member_info_data, f, ensure_ascii=False, indent=1)
+        logging.info("Saving new member data to {}.".format(filepath))
+        write_data_to_json_file(member_info_data, filepath)
 
 ########################################

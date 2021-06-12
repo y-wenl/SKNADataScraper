@@ -20,11 +20,14 @@
   official count)
 
 * TODO
-** [ ] Clean up code
-** [ ] Add more stringent validation
-** [ ] Reconsider data structure
+** [X] Clean up code (assembly_scraper_methods.py)
+** [ ] Clean up code (scrape_vote_data.py)
+** [X] Add more stringent validation
+** [X] Reconsider data structure (set aside for analysis phase)
+** [X] Scrape bill summaries from http://likms.assembly.go.kr/bill/billDetail2.do
 ** [ ] Add bills to version control
-** [ ] Create database of problematic bills for manual review
+*** [X] Output as pretty-printed json....
+** [X] Create database of problematic bills for manual review
+** [ ] Avoid re-fetching problematic bills?
 ** [ ] Create separate post-facto validation checker
 ** [ ] Determine what can run on sourcehut
-** [ ] Scrape bill summaries from http://likms.assembly.go.kr/bill/billDetail2.do

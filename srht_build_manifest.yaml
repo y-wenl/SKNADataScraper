@@ -3,6 +3,7 @@ packages:
   - python
   - python-requests
   - python-beautifulsoup4
+  - python-jsbeautifier
 sources:
   - https://git.sr.ht/~ywenl/SKNABillVoteData
 environment:
