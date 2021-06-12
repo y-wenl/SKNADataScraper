@@ -7,7 +7,7 @@ import re
 import datetime
 import time
 import json
-from vote_scraper_methods import *
+from assembly_scraper_methods import *
 from copy import copy,deepcopy
 
 all_sessions = [20, 21]
