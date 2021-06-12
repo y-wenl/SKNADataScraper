@@ -103,10 +103,13 @@ for session in all_sessions:
             try:
             #if True:
                 bill_data = scrape_bill_data(bill_no, bill_id, bill_id_master, session)
+
+                # add data available only in bill list (or at least, available easily only in bill list)
                 bill_data['result'] = bill['result']
-                bill_data['name'] = bill['billname']
+                bill_data['name'] = bill['billname'] # overwrite bill name with bill name from list
                 bill_data['kind'] = bill['billkindcd']
                 bill_data['committee'] = bill['currcommitte'] if 'currcommitte' in bill else None
+
                 with open(bill_filepath, 'w') as f:
                     json.dump(bill_data, f, ensure_ascii=False)
             except: # Exception as err:
