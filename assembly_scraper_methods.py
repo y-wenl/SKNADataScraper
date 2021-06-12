@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 member_list_base = 'http://likms.assembly.go.kr/bill/memVoteResult.do'
 member_data_base = 'http://likms.assembly.go.kr/bill/memVoteDetail.do'
-member_curdata_base = 'https://www.assembly.go.kr/assm/memPop/memPopup.do'
+# member_curdata_base = 'https://www.assembly.go.kr/assm/memPop/memPopup.do'
 
 #bill_list_base = 'http://likms.assembly.go.kr/bill/billVoteResult.do'
 bill_votedata_base = 'http://likms.assembly.go.kr/bill/billVoteResultDetail.do'
@@ -73,7 +73,7 @@ def scrape_member_list(session: int) -> dict:
 
 
 
-def scrape_bill_list_data(session):
+def scrape_bill_list_data(session:int) -> dict:
     """Given a session (e.g., 21), return a list of bills voted on.
 
     Data is returned as a dict, directly from the ajax request.
@@ -138,11 +138,30 @@ def scrape_bill_list_data(session):
     # no processing, just return the result as-is
     return bill_list_data
 
-def scrape_member_data(member_id, session):
+def scrape_member_data(member_id:str, session:int) -> dict:
+    """Given a member id (e.g., "9771165") and session (e.g., 21), return data
+    of the relevant Assembly member.
+
+    Data is returned as a dict, of the form
+        {
+            'name':      member name (str)
+            'name_alt':  alternative member name (e.g. hanja or hangeul version)
+                         str or None
+            'image_url': url of member mugshot
+                         str or None
+            'party':     member party (str)
+            'district':  member district represented (str)
+                         For party-list members, this is 비례대표
+            'session':   session number
+            'member_id': member id (str)
+        }
+    """
+
     # Get member data page
     logging.info("Downloading member data #" + str(member_id) + "...")
 
     #website_html = requests.get('{}?dept_cd={}'.format(member_curdata_base, member_id)).text # only for current members of the assembly
+
     website_html = requests.post(member_data_base, data={
         'ageFrom':  session,
         'ageTo':    session,
@@ -155,6 +174,7 @@ def scrape_member_data(member_id, session):
     # member name
     soup_name_info = soup.find('div', {'class':'personName'})
     member_name = soup_name_info.find('p', {'class':'lang01'}).get_text().strip()
+    assert(len(member_name) > 0)
     member_name_alt = None
     if soup_name_info.find('p', {'class':'lang02'}):
         member_name_alt = soup_name_info.find('p', {'class':'lang02'}).get_text().strip()
@@ -164,6 +184,11 @@ def scrape_member_data(member_id, session):
     soup_image_info = soup.find('div', {'class':'person'}).find('img')
     if soup_image_info:
         member_image_url = soup_image_info.attrs['src']
+
+        # Only save image url if it matches something sane.
+        # No need to abort if it doesn't; we don't care about missing pictures.
+        if not re.compile("^https?://([a-zA-Z0-9]*\.)assembly\.go\.kr/.*", re.I).search(member_image_url):
+            member_image_url = None
  
 
     # member party & district
@@ -177,6 +202,8 @@ def scrape_member_data(member_id, session):
     assert(soup_pd_contents[3].name == 'dd')
     member_party = soup_pd_contents[1].text.strip()
     member_district = soup_pd_contents[3].text.strip()
+    assert(len(member_party) > 0)
+    assert(len(member_district) > 0)
 
 
     member_info = {}
