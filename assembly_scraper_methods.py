@@ -217,9 +217,46 @@ def scrape_member_data(member_id:str, session:int) -> dict:
 
     return member_info
 
-def scrape_bill_data(bill_no, bill_id, id_master, session):
-    # Get bill data page
-    logging.info("Downloading bill data #" + bill_id + "...")
+def scrape_bill_data(bill_no:str, bill_id:str, id_master:int, session:int) -> dict:
+    """Given a bill no (e.g., "2110283"),
+       id (e.g. "PRC_A2H1K0K4I1G4X1Z7Q4W4S4N7E1W1F7"), and
+       id_master (e.g., 195858),
+       return voting result and summary data of the relevant bill.
+
+       Data is returned as a dict, of the form
+       {
+
+            bill_id:         bill_id
+            bill_no:         bill_no
+            id_master:       id_master
+            session:         session
+
+            name:            bill name (str)
+            summary:         bill summary
+            related_bill_ids: list of bill_ids of related bills
+
+            proposal_date:   YYYY-MM-DD
+            vote_date:       YYYY-MM-DD
+
+            total_members:   total # of members in the assembly
+            total_votes:     total # voting on this motion
+            total_agree:     total # voting agree
+            total_oppose:    total # voting oppose
+            total_abstain:   total # voting abstain
+                             This is the number abstaining _while present_
+                             NOT the number who just don't show up
+
+            members_agree:   List of members voting agree
+            members_oppose:  List of members voting oppose
+            members_abstain: List of members voting abstain
+       }
+    """
+
+    # We need to get data fom 2 pages: the bill vote data page, and the bill
+    # summary data page.
+
+    # Get bill vote data page
+    logging.info("Downloading bill vote data #" + bill_id + "...")
 
     website_html = requests.post(bill_votedata_base, data={
         'age':      session,
@@ -229,21 +266,18 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
         'tabMenuType': 'billVoteResult',
         }).text
     soup = BeautifulSoup(website_html,'lxml')
-    logging.info("Done downloading bill data")
+    logging.info("Done downloading bill vote data")
 
-    #import pdb; pdb.set_trace() # DEBUG
-    # get summary info
-
-    soup_summary = soup.find('div', {'class':'searchRst'})
-    soup_summary_items = soup_summary.find_all('li')
-    soup_summary_date_item = [x for x in soup_summary_items if '일자' in x.strong.get_text()][0]
-    soup_summary_voters_item = [x for x in soup_summary_items if '표결의원' in x.strong.get_text()][0]
-    soup_summary_result_item = [x for x in soup_summary_items if '표결결과' in x.strong.get_text()][0]
+    soup_mainsec = soup.find('div', {'class':'searchRst'})
+    soup_mainsec_items = soup_mainsec.find_all('li')
+    soup_mainsec_date_item = [x for x in soup_mainsec_items if '일자' in x.strong.get_text()][0]
+    soup_mainsec_voters_item = [x for x in soup_mainsec_items if '표결의원' in x.strong.get_text()][0]
+    soup_mainsec_result_item = [x for x in soup_mainsec_items if '표결결과' in x.strong.get_text()][0]
 
     proposal_date = None
     vote_date = None
     date_regex = re.compile('(20[0-9][0-9]-[01]?[0-9]-[0-3]?[0-9])')
-    date_searches = [date_regex.search(s.text) for s in soup_summary_date_item.find_all('span')]
+    date_searches = [date_regex.search(s.text) for s in soup_mainsec_date_item.find_all('span')]
     if len(date_searches)==2:
         if date_searches[0]:
             proposal_date = date_searches[0].group(1)
@@ -256,7 +290,7 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
     members_voting = None
     members_registered = None
     voters_regex = re.compile('재석\s*([0-9]+)\s*인.*재적\s*([0-9]+)\s*인')
-    voters_search = voters_regex.search(soup_summary_voters_item.span.text)
+    voters_search = voters_regex.search(soup_mainsec_voters_item.span.text)
     if voters_search:
         members_voting = int(voters_search.group(1))
         members_registered = int(voters_search.group(2))
@@ -266,7 +300,7 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
     total_oppose = None
     total_abstain = None
     result_regex = re.compile('\s*([0-9]+)\s*인\s*\(.*찬성\s*([0-9]+)\s*인.*반대\s*([0-9]+)\s*인.*기권\s*([0-9]+)\s*인')
-    result_search = result_regex.search(soup_summary_result_item.span.text)
+    result_search = result_regex.search(soup_mainsec_result_item.span.text)
     assert(result_search)
 
     total_votes = int(result_search.group(1))
@@ -298,12 +332,52 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
     oppose_member_list = [a_to_pair(a) for a in oppose_member_as]
     abstain_member_list = [a_to_pair(a) for a in abstain_member_as]
 
-    # import pdb; pdb.set_trace()
     assert(len(agree_member_list) == total_agree)
     assert(len(oppose_member_list) == total_oppose)
     assert(len(abstain_member_list) == total_abstain)
 
+
+    # Get bill summary data page
+    logging.info("Downloading bill summary data #" + bill_id + "...")
+    summ_website_html = requests.post(bill_summdata_base, data={
+        'billId':   bill_id,
+        }).text
+    summ_soup = BeautifulSoup(summ_website_html,'lxml').find('div', {'class': 'subContents'})
+    logging.info("Done downloading bill summary data")
+
+    # get bill name
+    summ_soup_name_item = summ_soup.find('h3', {'class':'titCont'})
+
+    name_regex = re.compile("^\s*\[" + str(bill_no) + "\]\s*(.*)\s*$")
+    assert(name_regex.search(summ_soup_name_item.text))
+    bill_name = name_regex.search(summ_soup_name_item.text).group(1).strip()
+    assert(len(bill_name) > 0)
+
+    # get bill summary
+    bill_summary = summ_soup.find('div', {'id':'summaryContentDiv'}).text.strip()
+    # note: we won't require this to be non-empty
+
+    # get related bills
+    other_bill_url_rex = re.compile('/bill/billDetail.do\?billId=([a-zA-Z0-9_-]*)')
+    summ_soup_other_bill_items = summ_soup.find_all('a', {'href': other_bill_url_rex})
+    related_bill_ids = [other_bill_url_rex.search(a['href']).group(1) for a in summ_soup_other_bill_items]
+
+    # eliminate duplicates and the current bill from related_bill_ids
+    related_bill_ids = list(set(related_bill_ids) - set([bill_id]))
+
+    # put data into dict
+
     bill_data = {}
+
+    bill_data['bill_id'] = bill_id
+    bill_data['bill_no'] = bill_no
+    bill_data['id_master'] = id_master
+    bill_data['session'] = session
+
+    bill_data['name'] = bill_name
+    bill_data['summary'] = bill_summary
+    bill_data['related_bill_ids'] = related_bill_ids
+
     bill_data['proposal_date'] = proposal_date
     bill_data['vote_date'] = vote_date
     bill_data['members_voting'] = members_voting
