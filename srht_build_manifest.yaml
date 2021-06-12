@@ -1,0 +1,17 @@
+image: archlinux
+packages:
+  - python
+  - python-requests
+  - python-beautifulsoup4
+sources:
+  - https://git.sr.ht/~ywenl/SKNABillVoteData
+environment:
+tasks:
+  - setup: |
+      cd bill_scraper
+      echo "TODO any necessary setup"
+  - build: |
+      cd bill_scraper
+      echo "TODO scrape new bill data"
+  - deploy: |
+      echo "TODO add new data to repository"
