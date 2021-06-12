@@ -70,8 +70,56 @@ def scrape_member_list(session: int) -> dict:
 
     return {x[0]:x[1] for x in zip(member_ids, member_names)}
 
+
+
+
 def scrape_bill_list_data(session):
-    # get bill list page
+    """Given a session (e.g., 21), return a list of bills voted on.
+
+    Data is returned as a dict, directly from the ajax request.
+    This dict has the form:
+    'ageMap': {
+        'ord': session number as int (e.g. 21),,
+        'age': session number as str (e.g. '21'),,
+        'ageName': session name in Korean (e.g. '제21대'),
+        'startDt': YYYYMMDD,
+        'endDt': YYYYMMDD,
+        'sessionFrom': ? (e.g. 379),
+        'sessionTo': ? (e.g. 388)
+        }
+    'ageList': [ageMap]
+    'allCount': Total number of bills
+    'billKindList': List of dicts, each for a bill type (e.g. 헌법개정)
+    'paramMap': Dict containing bill search request data
+                Not really important I think.
+    'countVec': List of dicts, each telling the number of bills for a given
+                committee.
+    'resListVo': List of dicts, each dict describing a bill. The dict for each
+                 bill has the form
+                {
+                'seq': ? (e.g. 1),
+                'page': ? (e.g. 1),
+                'billid': Bill ID string (e.g. 'PRC_A2H1K0K4I1G4X1Z7Q4W4S4N7E1W1F7'),
+                'billno': Bill number, as a string (e.g. '2110283'),
+                'billkindcd': Bill type (e.g. '법률안'),
+                'age': session number as str (e.g. '21'),
+                'billname': Bill name string
+                'processdate': YYYY-MM-DD,
+                'idmaster': int, idk what this is (e.g. 195858),
+                'sessioncd': ? (e.g. 387),
+                'currentscd': ? (e.g. 2),
+                'currcommitte': committee string (e.g. '보건복지위원회'),
+                'mtcnt': # of assembly members (I think?) (e.g. 300),
+                'vtcnt': # of members voting on the bill (e.g. 203),
+                'agree': # of members voting yes (e.g. 202),
+                'withdraw': # of members abstaining (e.g. 1),
+                'disagree': # of members voting no (e.g. 0),
+                'xx': ? (e.g. 97),
+                'result': string indicating passage or not (e.g.'원안가결')
+                }
+    """
+
+    # get bill list data
     logging.info("Downloading bill list #" + str(session) + "...")
     bill_list_json = requests.post(bill_list_ajax_base, data={
         'ageFrom': session,
@@ -87,6 +135,7 @@ def scrape_bill_list_data(session):
     logging.info("Done downloading bill list")
     bill_list_data = json.loads(bill_list_json)
 
+    # no processing, just return the result as-is
     return bill_list_data
 
 def scrape_member_data(member_id, session):
