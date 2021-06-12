@@ -232,7 +232,7 @@ def scrape_bill_data(bill_no:str, bill_id:str, id_master:int, session:int) -> di
             session:         session
 
             name:            bill name (str)
-            summary:         bill summary
+            summary:         bill summary (str or None)
             related_bill_ids: list of bill_ids of related bills
 
             proposal_date:   YYYY-MM-DD
@@ -354,8 +354,12 @@ def scrape_bill_data(bill_no:str, bill_id:str, id_master:int, session:int) -> di
     assert(len(bill_name) > 0)
 
     # get bill summary
-    bill_summary = summ_soup.find('div', {'id':'summaryContentDiv'}).text.strip()
-    # note: we won't require this to be non-empty
+    # note that not all bills have summaries available
+    bill_summary = None
+    if summ_soup.find('div', {'id':'summaryContentDiv'}):
+        bill_summary = summ_soup.find('div', {'id':'summaryContentDiv'}).text.strip()
+        if len(bill_summary) == 0:
+            bill_summary = None
 
     # get related bills
     other_bill_url_rex = re.compile('/bill/billDetail.do\?billId=([a-zA-Z0-9_-]*)')
