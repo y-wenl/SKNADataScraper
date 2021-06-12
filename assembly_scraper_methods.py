@@ -1,39 +1,78 @@
 #! /usr/bin/python
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 import re
+import json
+
 import requests
 from bs4 import BeautifulSoup
-import json
+
+
+# Set up base urls
 
 member_list_base = 'http://likms.assembly.go.kr/bill/memVoteResult.do'
 member_data_base = 'http://likms.assembly.go.kr/bill/memVoteDetail.do'
 member_curdata_base = 'https://www.assembly.go.kr/assm/memPop/memPopup.do'
-bill_list_base = 'http://likms.assembly.go.kr/bill/billVoteResult.do'
-bill_data_base = 'http://likms.assembly.go.kr/bill/billVoteResultDetail.do'
+
+#bill_list_base = 'http://likms.assembly.go.kr/bill/billVoteResult.do'
+bill_votedata_base = 'http://likms.assembly.go.kr/bill/billVoteResultDetail.do'
+bill_summdata_base = 'http://likms.assembly.go.kr/bill/billDetail2.do'
 bill_list_ajax_base = 'http://likms.assembly.go.kr/bill/billVoteResultListAjax.do'
 
-def scrape_member_list(session):
+def scrape_member_list(session: int) -> dict:
+    """Given a session (e.g., 21), return a list of Assembly member names and ids.
+
+    Data is returned as a dict, of the form {id:name, id:name, etc}.
+    """
 
     # Get member list page
-    print("Downloading member list #" + str(session) + "...")
-    #website_html = requests.get('{}?ageFrom={}&ageTo={}&age={}'.format(member_list_base, session, session, session)).text
+    logging.info("Downloading member list #" + str(session) + "...")
     website_html = requests.post(member_list_base, data={
         'ageFrom':  session,
         'ageTo':    session,
         'age':      session,
         }).text
     soup = BeautifulSoup(website_html,'lxml')
-    print("done")
+    logging.info("Done downloading member list")
 
     # get link for each member
+    # Member data links have the form, e.g.:
+    # <a href="javascript:fnViewMemDetail('9771145','21')" title="홍준표"> [whitespace and newlines] 홍준표 [whitespace and newlines] </a>
+    # or
+    # <a href="javascript:fnViewMemDetail('9771046','20')" title="김성태"> [whitespace and newlines] 金成泰  [whitespace and newlines] </a>
+    # or
+    # <a href="javascript:fnViewMemDetail('9771029','20')" title="최경환"> [whitespace and newlines] 최경환(한)   [whitespace and newlines] </a>
+    #
+    # Note that each assembly member's name is givin in hangeul under a.title,
+    # while their display name may be either hangeul or hanja. Furthermore the
+    # display name includes a parenthetical to distinguish lawmakers with
+    # identical names.
+    #
+    # We will just record the display names here. In fact we really just need a
+    # list of ids, since we get more complete member data info elsewhere, but
+    # the display names will be saved here as well to simplify future debugging.
+
     member_as = soup.find_all('a', {'href': re.compile('.*:fnViewMemDetail.*')})
     member_names = [a.text.strip() for a in member_as]
+    # member_hangeul_names = [a['title'].strip() for a in member_as]
     member_ids = [re.compile("fnViewMemDetail\('([0-9]+)'").search(a.attrs['href']).group(1) for a in member_as]
+
+
+    # Make sure the name is non-empty
+    for member_name in member_names:
+        assert(len(member_name) > 0)
+
+    # Ensure each member id is a string of numbers
+    for member_id in member_ids:
+        assert(re.compile('^[0-9]+$').search(member_id))
+
     return {x[0]:x[1] for x in zip(member_ids, member_names)}
 
 def scrape_bill_list_data(session):
     # get bill list page
-    print("Downloading bill list #" + str(session) + "...")
+    logging.info("Downloading bill list #" + str(session) + "...")
     bill_list_json = requests.post(bill_list_ajax_base, data={
         'ageFrom': session,
         'ageTo': session,
@@ -45,14 +84,14 @@ def scrape_bill_list_data(session):
         'tabMenuType': 'billVoteResult',
         'searchYn': 'ABC',
         }).text
-    print("done")
+    logging.info("Done downloading bill list")
     bill_list_data = json.loads(bill_list_json)
 
     return bill_list_data
 
 def scrape_member_data(member_id, session):
     # Get member data page
-    print("Downloading member data #" + str(member_id) + "...")
+    logging.info("Downloading member data #" + str(member_id) + "...")
 
     #website_html = requests.get('{}?dept_cd={}'.format(member_curdata_base, member_id)).text # only for current members of the assembly
     website_html = requests.post(member_data_base, data={
@@ -62,7 +101,7 @@ def scrape_member_data(member_id, session):
         'picDeptCd':member_id,
         }).text
     soup = BeautifulSoup(website_html,'lxml')
-    print("done")
+    logging.info("Done downloading member data")
 
     # member name
     soup_name_info = soup.find('div', {'class':'personName'})
@@ -104,9 +143,9 @@ def scrape_member_data(member_id, session):
 
 def scrape_bill_data(bill_no, bill_id, id_master, session):
     # Get bill data page
-    print("Downloading bill data #" + bill_id + "...")
+    logging.info("Downloading bill data #" + bill_id + "...")
 
-    website_html = requests.post(bill_data_base, data={
+    website_html = requests.post(bill_votedata_base, data={
         'age':      session,
         'billNo':   bill_no,
         'billId':   bill_id,
@@ -114,7 +153,7 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
         'tabMenuType': 'billVoteResult',
         }).text
     soup = BeautifulSoup(website_html,'lxml')
-    print("done")
+    logging.info("Done downloading bill data")
 
     #import pdb; pdb.set_trace() # DEBUG
     # get summary info
