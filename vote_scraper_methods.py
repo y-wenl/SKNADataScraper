@@ -116,6 +116,7 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
     soup = BeautifulSoup(website_html,'lxml')
     print("done")
 
+    #import pdb; pdb.set_trace() # DEBUG
     # get summary info
 
     soup_summary = soup.find('div', {'class':'searchRst'})
@@ -151,11 +152,14 @@ def scrape_bill_data(bill_no, bill_id, id_master, session):
     total_abstain = None
     result_regex = re.compile('\s*([0-9]+)\s*인\s*\(.*찬성\s*([0-9]+)\s*인.*반대\s*([0-9]+)\s*인.*기권\s*([0-9]+)\s*인')
     result_search = result_regex.search(soup_summary_result_item.span.text)
-    if result_search:
-        total_votes = int(result_search.group(1))
-        total_agree = int(result_search.group(2))
-        total_oppose = int(result_search.group(3))
-        total_abstain = int(result_search.group(4))
+    assert(result_search)
+
+    total_votes = int(result_search.group(1))
+    total_agree = int(result_search.group(2))
+    total_oppose = int(result_search.group(3))
+    total_abstain = int(result_search.group(4))
+
+    assert(total_agree + total_oppose + total_abstain == total_votes)
 
     # get voter list info
     soup_box_results = soup.find_all('div', {'class', 'boxResult'})
