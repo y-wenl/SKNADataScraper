@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 member_list_base = 'http://likms.assembly.go.kr/bill/memVoteResult.do'
 member_data_base = 'http://likms.assembly.go.kr/bill/memVoteDetail.do'
-# member_curdata_base = 'https://www.assembly.go.kr/assm/memPop/memPopup.do'
+member_curdata_base = 'https://www.assembly.go.kr/assm/memPop/memPopup.do'
 
 #bill_list_base = 'http://likms.assembly.go.kr/bill/billVoteResult.do'
 bill_votedata_base = 'http://likms.assembly.go.kr/bill/billVoteResultDetail.do'
@@ -157,7 +157,7 @@ def scrape_member_data(member_id:str, session:int) -> dict:
         }
     """
 
-    # Get member data page
+    # Get member data pages
     logging.info("Downloading member data #" + str(member_id) + "...")
 
     #website_html = requests.get('{}?dept_cd={}'.format(member_curdata_base, member_id)).text # only for current members of the assembly
@@ -169,7 +169,15 @@ def scrape_member_data(member_id:str, session:int) -> dict:
         'picDeptCd':member_id,
         }).text
     soup = BeautifulSoup(website_html,'lxml')
+
+    website_html2 = requests.post(member_curdata_base, data={
+        'dept_cd':member_id,
+        }).text
+    soup2 = BeautifulSoup(website_html2,'lxml')
+
     logging.info("Done downloading member data")
+
+    ## scrape basic data page
 
     # member name
     soup_name_info = soup.find('div', {'class':'personName'})
@@ -205,15 +213,82 @@ def scrape_member_data(member_id:str, session:int) -> dict:
     assert(len(member_party) > 0)
     assert(len(member_district) > 0)
 
+    ## scrape in-depth data page
+    soup_box_info = soup2.find("div", {"class":"info_mna"})
+    soup2_name = soup_box_info.find("h4").get_text().strip()
+    assert(soup2_name in [member_name, member_name_alt])
+    # should be '', alt_name, romanized name, and date of birth
+    profile_items = [x.get_text().strip() for x in soup_box_info.find("div", {"class":"profile"}).find_all("li")]
+    soup_pro_info = soup_box_info.find("dl", {"class":"pro_detail"})
+    pro_dict = {}
+    soup_pro_next_dt = soup_pro_info.find("dt")
+    soup_pro_next_dd = soup_pro_next_dt.find_next_sibling("dd")
+    while (soup_pro_next_dt and soup_pro_next_dd):
+        pro_dict[soup_pro_next_dt.get_text().strip()] = soup_pro_next_dd.get_text().strip()
+        soup_pro_next_dt = soup_pro_next_dd.find_next_sibling("dt")
+        if soup_pro_next_dt is not None:
+            soup_pro_next_dd = soup_pro_next_dt.find_next_sibling("dd")
+
+    # get member romanized name
+    member_roman_name = None
+    for profile_item in profile_items:
+        if len(profile_item) > 0:
+            this_roman_match = re.match("[a-zA-Z][a-zA-Z -.]*", profile_item)
+            if this_roman_match:
+                member_roman_name = this_roman_match.group(0).upper()
+
+    # get member date of birth
+    member_dob = None
+    for profile_item in profile_items:
+        if len(profile_item) > 0:
+            this_dob_match = re.match("[12][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]", profile_item)
+            if this_dob_match:
+                member_dob = this_dob_match.group(0)
+
+    # get committees
+    member_committees = []
+    if "소속위원회" in pro_dict:
+        member_committees = [x.strip() for x in pro_dict["소속위원회"].split(",")]
+
+    # get terms in office
+    member_terms = None
+    if "당선횟수" in pro_dict:
+        terms_match = re.match("^\s*(\w[0-9]*)선", pro_dict["당선횟수"])
+        if terms_match:
+            if terms_match.group(1) == "초":
+                member_terms = 1
+            elif terms_match.group(1) == "재":
+                member_terms = 2
+            else:
+                try:
+                    member_terms = int(terms_match.group(1))
+                except ValueError:
+                    member_terms = None
+
+    # get phone number etc
+    member_phone = pro_dict.get("사무실 전화", None)
+    member_office = pro_dict.get("사무실 호실", None)
+    member_website = pro_dict.get("홈페이지", None)
+    member_email = pro_dict.get("이메일", None)
+
 
     member_info = {}
-    member_info['name'] = member_name
-    member_info['name_alt'] = member_name_alt
-    member_info['image_url'] = member_image_url
-    member_info['party'] = member_party
-    member_info['district'] = member_district
-    member_info['session'] = session
-    member_info['member_id'] = member_id
+    member_info['name']         = member_name
+    member_info['name_alt']     = member_name_alt
+    member_info['image_url']    = member_image_url
+    member_info['party']        = member_party
+    member_info['district']     = member_district
+    member_info['session']      = session
+    member_info['member_id']    = member_id
+
+    member_info['roman_name']   = member_roman_name
+    member_info['dob']          = member_dob
+    member_info['committees']   = member_committees
+    member_info['terms']        = member_terms
+    member_info['phone']        = member_phone
+    member_info['office']       = member_office
+    member_info['website']      = member_website
+    member_info['email']        = member_email
 
     return member_info
 
