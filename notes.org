@@ -28,6 +28,6 @@
 ** [ ] Add bills to version control
 *** [X] Output as pretty-printed json....
 ** [X] Create database of problematic bills for manual review
-** [ ] Avoid re-fetching problematic bills?
+** [X] Avoid re-fetching certain problematic bills
 ** [ ] Create separate post-facto validation checker
 ** [ ] Determine what can run on sourcehut

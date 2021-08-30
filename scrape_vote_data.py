@@ -17,10 +17,17 @@ import jsbeautifier
 jsb_opts = jsbeautifier.default_options()
 jsb_opts.indent_size = 2
 
+def write_data_to_json_file(this_data, filepath):
+    with open(filepath, 'w') as f:
+        json_data = json.dumps(this_data, ensure_ascii=False)
+        json_data = jsbeautifier.beautify(json_data, jsb_opts) # beautify
+        f.write(json_data)
+
+
 all_sessions = [20, 21]
 current_session = 21
 
-data_dir = 'data'
+data_dir = '../data'
 bad_bills_log_filename = 'bad_bills_log.json'
 
 bad_bills_log_filepath = os.path.join(data_dir, bad_bills_log_filename)
@@ -28,20 +35,16 @@ bad_bills_log_filepath = os.path.join(data_dir, bad_bills_log_filename)
 if not os.path.isfile(bad_bills_log_filepath):
     write_data_to_json_file({}, bad_bills_log_filepath)
 
-def write_data_to_json_file(this_data, filepath):
-    with open(filepath, 'w') as f:
-        json_data = json.dumps(this_data, ensure_ascii=False)
-        json_data = jsbeautifier.beautify(json_data, jsb_opts) # beautify
-        f.write(json_data)
-
 ########## Update bill lists ##########
 
 # * Don't update past sessions if we have the data
 # * Update current session if data age > 1 week
 bill_list_freshness_age_limit = 7 * 24 * 3600 # freshness limit in seconds
 
-bill_list_data_filename_regex = re.compile('bill_list_data_session([2-9][0-9])_dltime([0-9]+).json')
-bill_list_data_filename_template = 'bill_list_data_session{}_dltime{}.json'
+# bill_list_data_filename_regex = re.compile('bill_list_data_session([2-9][0-9])_dltime([0-9]+).json')
+# bill_list_data_filename_template = 'bill_list_data_session{}_dltime{}.json'
+bill_list_data_filename_regex = re.compile('bill_list_data_session([2-9][0-9]).json')
+bill_list_data_filename_template = 'bill_list_data_session{}.json'
 
 # Figure out which sessions need to be downloaded
 bill_sessions_to_dl = set(all_sessions)
@@ -150,6 +153,8 @@ for session in all_sessions:
             except: # Exception as err:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 exc_traceback_str = ''.join(traceback.format_tb(exc_traceback))
+                exc_traceback_str = re.sub(r"[^\"\s]*/","",exc_traceback_str) # scrub filenames
+                exc_traceback_str = re.sub(r"/[^\"\s/]*","",exc_traceback_str) # scrub filenames
                 bad_bills_data[bill_id] = {'session':session, 'bill_no':bill_no, 'bill_id':bill_id, 'id_master':bill_id_master, 'error':[str(exc_type), exc_traceback_str]}
                 logging.info(exc_type)
                 traceback.print_tb(exc_traceback)
@@ -161,8 +166,10 @@ write_data_to_json_file(bad_bills_data, bad_bills_log_filepath)
 ########## Update member data ##########
 member_list_freshness_age_limit = 30 * 24 * 3600 # freshness limit in seconds
 
-member_list_data_filename_regex = re.compile('member_list_data_session([2-9][0-9])_dltime([0-9]+).json')
-member_list_data_filename_template = 'member_list_data_session{}_dltime{}.json'
+# member_list_data_filename_regex = re.compile('member_list_data_session([2-9][0-9])_dltime([0-9]+).json')
+# member_list_data_filename_template = 'member_list_data_session{}_dltime{}.json'
+member_list_data_filename_regex = re.compile('member_list_data_session([2-9][0-9]).json')
+member_list_data_filename_template = 'member_list_data_session{}.json'
 
 member_info_data_filename_regex = re.compile('member_info_data_session([2-9][0-9]).json')
 member_info_data_filename_template = 'member_info_data_session{}.json'
