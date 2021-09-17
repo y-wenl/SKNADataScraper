@@ -167,7 +167,8 @@ member_info_data_filename_regex = re.compile('member_info_data_session([2-9][0-9
 member_info_data_filename_template = 'member_info_data_session{}.json'
 
 # Figure out which sessions need to be downloaded
-member_sessions_to_dl = set(all_sessions)
+# Note that only the most recent one has data available now..
+member_sessions_to_dl = set([max(all_sessions)])
 for filename in os.listdir(data_dir):
     filepath = os.path.join(data_dir, filename)
 
@@ -231,7 +232,7 @@ for session in all_sessions:
 
 # load member info files and download any missing data
 maxdl = 10000
-for session in all_sessions:
+for session in member_sessions_to_dl:
     curdl = 0
     filename = member_info_data_filename_template.format(session)
     filepath = os.path.join(data_dir, filename)
