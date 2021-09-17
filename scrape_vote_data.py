@@ -41,8 +41,6 @@ if not os.path.isfile(bad_bills_log_filepath):
 # * Update current session if data age > 1 week
 bill_list_freshness_age_limit = 7 * 24 * 3600 # freshness limit in seconds
 
-# bill_list_data_filename_regex = re.compile('bill_list_data_session([2-9][0-9])_dltime([0-9]+).json')
-# bill_list_data_filename_template = 'bill_list_data_session{}_dltime{}.json'
 bill_list_data_filename_regex = re.compile('bill_list_data_session([2-9][0-9]).json')
 bill_list_data_filename_template = 'bill_list_data_session{}.json'
 
@@ -56,10 +54,10 @@ for filename in os.listdir(data_dir):
         session = int(bill_list_data_filename_search.group(1))
 
         if session == current_session:
-            dltime = int(bill_list_data_filename_search.group(2))
-
             curtime = time.time()
-            age_secs_filename = curtime - dltime
+            #age_secs_filename = curtime - dltime
+            # TODO: use git to determine bill list age
+            age_secs_filename = 3600*24*1000 # a big number
 
             if age_secs_filename < bill_list_freshness_age_limit:
                 # if bill data is sufficiently fresh, no need to download it again
@@ -83,17 +81,13 @@ for session in bill_sessions_to_dl:
 
 # Load bill_list_data
 bill_list_filepaths = {}
-freshest_bill_list_times = {s:0 for s in all_sessions}
 for filename in os.listdir(data_dir):
     filepath = os.path.join(data_dir, filename)
 
     bill_list_data_filename_search = bill_list_data_filename_regex.search(filename)
     if bill_list_data_filename_search:
         session = int(bill_list_data_filename_search.group(1))
-        dltime = int(bill_list_data_filename_search.group(2))
-        if dltime > freshest_bill_list_times[session]:
-            bill_list_filepaths[session] = filepath
-            freshest_bill_list_times[session] = dltime
+        bill_list_filepaths[session] = filepath
 
 bill_list_datas = {}
 for session in all_sessions:
@@ -166,8 +160,6 @@ write_data_to_json_file(bad_bills_data, bad_bills_log_filepath)
 ########## Update member data ##########
 member_list_freshness_age_limit = 30 * 24 * 3600 # freshness limit in seconds
 
-# member_list_data_filename_regex = re.compile('member_list_data_session([2-9][0-9])_dltime([0-9]+).json')
-# member_list_data_filename_template = 'member_list_data_session{}_dltime{}.json'
 member_list_data_filename_regex = re.compile('member_list_data_session([2-9][0-9]).json')
 member_list_data_filename_template = 'member_list_data_session{}.json'
 
@@ -184,10 +176,12 @@ for filename in os.listdir(data_dir):
         session = int(member_list_data_filename_search.group(1))
 
         if session == current_session:
-            dltime = int(member_list_data_filename_search.group(2))
+            #dltime = int(member_list_data_filename_search.group(2))
+            # TODO: use git to determine member list age
 
             curtime = time.time()
-            age_secs_filename = curtime - dltime
+            # age_secs_filename = curtime - dltime
+            age_secs_filename = 3600*24*1000 # a big number
 
             if age_secs_filename < member_list_freshness_age_limit:
                 # if member data is sufficiently fresh, no need to download it again
@@ -209,17 +203,13 @@ for session in member_sessions_to_dl:
 
 # Load member_list_data
 member_list_filepaths = {}
-freshest_member_list_times = {s:0 for s in all_sessions}
 for filename in os.listdir(data_dir):
     filepath = os.path.join(data_dir, filename)
 
     member_list_data_filename_search = member_list_data_filename_regex.search(filename)
     if member_list_data_filename_search:
         session = int(member_list_data_filename_search.group(1))
-        dltime = int(member_list_data_filename_search.group(2))
-        if dltime > freshest_member_list_times[session]:
-            member_list_filepaths[session] = filepath
-            freshest_member_list_times[session] = dltime
+        member_list_filepaths[session] = filepath
 
 member_list_datas = {}
 for session in all_sessions:
