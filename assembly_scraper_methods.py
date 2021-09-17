@@ -97,8 +97,6 @@ def scrape_bill_list_data(session:int) -> dict:
     'resListVo': List of dicts, each dict describing a bill. The dict for each
                  bill has the form
                 {
-                'seq': ? (e.g. 1),
-                'page': ? (e.g. 1),
                 'billid': Bill ID string (e.g. 'PRC_A2H1K0K4I1G4X1Z7Q4W4S4N7E1W1F7'),
                 'billno': Bill number, as a string (e.g. '2110283'),
                 'billkindcd': Bill type (e.g. '법률안'),
@@ -134,6 +132,11 @@ def scrape_bill_list_data(session:int) -> dict:
         }).text
     logging.info("Done downloading bill list")
     bill_list_data = json.loads(bill_list_json)
+
+    # remove seq and page keys, since these change regularly and take up space in git
+    for b in bill_list_data['resListVo']:
+        del(b['seq'])
+        del(b['page'])
 
     # no processing, just return the result as-is
     return bill_list_data
