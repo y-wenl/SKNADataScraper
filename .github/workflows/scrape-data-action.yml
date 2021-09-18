@@ -1,0 +1,36 @@
+name: SKNA Data Scraper
+on: [workflow_dispatch]
+jobs:
+  Scrape-SKNA-Data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v2
+        with:
+          path: main
+      - name: Check out my other private repo
+        uses: actions/checkout@v2
+        with:
+          path: data
+          repository: y-wenl/SKNAData
+          token: ${{ secrets.PAT }}
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          cd main
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Scrape data
+        run: |
+          cd main
+          python scrape_vote_data.py
+      - name: Commit new data
+        run: |
+          cd data
+          git config user.name "mechazawa"
+          git config user.email "mechazawa@local"
+          git add .
+          git commit -m "Automated scraper commit" && git push || echo "No data change"
