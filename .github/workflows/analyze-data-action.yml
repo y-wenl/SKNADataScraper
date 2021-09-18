@@ -1,0 +1,45 @@
+name: SKNA Data Analyzer
+on:
+  workflow_run:
+    workflows: ["SKNA Data Scraper"]
+    branches: [main]
+    types: 
+      - completed
+jobs:
+  Analyze-SKNA-Data:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Check out SKNA_Analysis code
+        uses: actions/checkout@v2
+        with:
+          path: analysis
+          repository: y-wenl/SKNA_Analysis
+          token: ${{ secrets.PAT }}
+      - name: Check out data
+        uses: actions/checkout@v2
+        with:
+          path: data
+          repository: y-wenl/SKNAData
+          token: ${{ secrets.PAT }}
+      - name: Install Julia
+        uses: julia-actions/setup-julia@v1
+        with:
+          version: 1.6.2
+      - name: Install Julia dependencies
+        run: |
+          cd analysis
+          #julia --project=. -e 'import Pkg; Pkg.instantiate()'
+          julia -e 'import Pkg; Pkg.add("DelimitedFiles"); Pkg.add("JSON"); Pkg.add("YAML"); Pkg.add("Underscores")'
+      - name: Run analyses
+        run: |
+          cd analysis
+          julia process_data.jl
+          julia web_export.jl
+      - name: Commit new data
+        run: |
+          cd data
+          git config user.name "mechazawa"
+          git config user.email "mechazawa@local"
+          git add .
+          git commit -m "Automated analysis commit" && git push || echo "No data change"

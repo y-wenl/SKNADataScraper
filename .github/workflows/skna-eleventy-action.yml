@@ -1,0 +1,46 @@
+name: SKNA 11ty builder
+on:
+  workflow_run:
+    workflows: ["SKNA Data Analyzer"]
+    branches: [main]
+    types: 
+      - completed
+
+jobs:
+  Build-SKNA-11ty:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Check out SKNA 11ty repo
+        uses: actions/checkout@v2
+        with:
+          path: eleventy
+          repository: y-wenl/politopic-SKNA-11ty
+          token: ${{ secrets.PAT }}
+      - name: Check out data
+        uses: actions/checkout@v2
+        with:
+          path: data
+          repository: y-wenl/SKNAData
+          token: ${{ secrets.PAT }}
+      - name: Check out politopic public
+        uses: actions/checkout@v2
+        with:
+          path: public
+          repository: y-wenl/politopic-public
+          token: ${{ secrets.PAT }}
+      - name: Run eleventy
+        uses: y-wenl/actions-eleventy@main
+        with:
+          working_directory: eleventy
+      - name: Update site
+        run: |
+          cp -rv data/webdata/* public/skna/data/
+          cp -rv eleventy/dist/* public/skna/
+      - name: Commit site updates
+        run: |
+          cd public
+          git config user.name "mechazawa"
+          git config user.email "mechazawa@local"
+          git add .
+          git commit -m "Automated eleventy update commit" && git push || echo "No data change"
