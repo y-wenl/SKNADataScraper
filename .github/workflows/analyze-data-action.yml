@@ -30,7 +30,7 @@ jobs:
         run: |
           cd analysis
           #julia --project=. -e 'import Pkg; Pkg.instantiate()'
-          julia -e 'import Pkg; Pkg.add("DelimitedFiles"); Pkg.add("JSON"); Pkg.add("YAML"); Pkg.add("Underscores")'
+          julia -e 'import Pkg; Pkg.add("DelimitedFiles"); Pkg.add("JSON"); Pkg.add("YAML"); Pkg.add(Pkg.PackageSpec(;name="Underscores", version="2.0.0"))'
       - name: Run analyses
         run: |
           cd analysis
