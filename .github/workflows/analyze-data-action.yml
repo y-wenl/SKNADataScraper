@@ -22,24 +22,37 @@ jobs:
           path: data
           repository: y-wenl/SKNAData
           token: ${{ secrets.PAT }}
-      - name: Install Julia
-        uses: julia-actions/setup-julia@v1
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
         with:
-          version: 1.6.2
-      - name: Install Julia dependencies
+          python-version: 3.9
+      - name: Install dependencies
         run: |
           cd analysis
-          #julia --project=. -e 'import Pkg; Pkg.instantiate()'
-          julia -e 'import Pkg; Pkg.add("DelimitedFiles"); Pkg.add("JSON"); Pkg.add("YAML"); Pkg.add(Pkg.PackageSpec(;name="Underscores", version="2.0.0"))'
-      - name: Run analyses
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Process data
         run: |
           cd analysis
-          julia process_data.jl
-          julia web_export.jl
+          python process_data.py
+      - name: Perform analyses
+        run: |
+          cd analysis
+          python perform_analyses.py
       - name: Commit new data
         run: |
           cd data
           git config user.name "mechazawa"
           git config user.email "mechazawa@local"
+
+          echo "> git diff --stat"
+          git diff --stat
+          echo "> ls"
+          ls
+          echo "> ls processed"
+          ls processed
+          echo "> cat webdata/members/member_vote_data_21_9771260.json"
+          cat webdata/members/member_vote_data_21_9771260.json
+
           git add .
-          git commit -m "Automated analysis commit" && git push || echo "No data change"
+          git commit -m "Automated analysis (v2) commit" && git push || echo "No data change"
