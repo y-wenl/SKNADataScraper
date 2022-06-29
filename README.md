@@ -16,10 +16,12 @@ It produces the following output:
 
 - Install python 3 and the packages in `requirements.txt` (requests, beautifulsoup4, lxml, jsbeautifier).
 
-- Run `scrape_vote_data.py`. Output data will be saved to `../data` (there is currently no configuration option, but you can change the `data_dir` variable near the top of `scrape_vote_data.py`. Note that there are thousands of bills, so it will take some time. If the process is interrupted, just run it again; it will not re-download bills it has already saved.
+- Create the directory `../data/` and run `scrape_vote_data.py`. Output data will be saved to `../data` (there is currently no configuration option, but you can change the `data_dir` variable near the top of `scrape_vote_data.py`). Note that there are thousands of bills, so it will take some time. If the process is interrupted, just run it again; it will not re-download bills it has already saved.
 
 - To use programmatically, import `assembly_scraper_methods.py`, which contains the following methods:
     - `scrape_member_list(session)`: return a dict containing the list of assembly members in the relevant session (note that you must use the current session, as past sessions are unavailable on the website).
     - `scrape_bill_list_data(session)`: return a dict containing the list of bills voted on in the relevant session (here you may you use a past session).
     - `scrape_member_data(member_id, session)`: return a dict containing information about a given assembly member (note that member IDs are not guaranteed to be consistent across sessions).
     - `scrape_bill_data(bill_no, bill_id, id_master, session)`: return a dict containing information about a given bill, including the list of members who voted for or against it. Note that you must use all three identifying variables (this is just how the National Assembly website is built).
+
+- If you just want the output data, it is available at [y-wenl/SKNAData](https://github.com/y-wenl/SKNAData), which is updated daily.
