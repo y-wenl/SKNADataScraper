@@ -30,6 +30,8 @@ current_session = 21
 data_dir = '../data'
 bad_bills_log_filename = 'bad_bills_log.json'
 
+assert os.path.isdir(data_dir), "Data directory (" + data_dir + ") does not exist. Please create it before running."
+
 bad_bills_log_filepath = os.path.join(data_dir, bad_bills_log_filename)
 # create bad bills log file if it doesn't exist
 if not os.path.isfile(bad_bills_log_filepath):
@@ -117,6 +119,10 @@ bill_data_filename_template = 'bill_data_session{}_no{}_id{}.json'
 
 ##### Download bill vote data
 bill_data_dir = os.path.join(data_dir, 'bills')
+# create bills dir if it doesn't exist
+if not os.path.isdir(bill_data_dir):
+    os.mkdir(bill_data_dir)
+
 # bad_bills_data = {}
 for session in all_sessions:
     bill_list_data = bill_list_datas[session]
@@ -213,14 +219,14 @@ for filename in os.listdir(data_dir):
         member_list_filepaths[session] = filepath
 
 member_list_datas = {}
-for session in all_sessions:
+for session in member_sessions_to_dl:
     with open(member_list_filepaths[session], 'r') as f:
         member_list_datas[session] = json.load(f)
 
 ##### Read all the past bills to get the ids of any members missing from the member lists
 
-all_member_ids = {s:set(member_list_datas[s]) for s in all_sessions}
-for session in all_sessions:
+all_member_ids = {s:set(member_list_datas[s]) for s in member_sessions_to_dl }
+for session in member_sessions_to_dl:
     for filename in [x for x in os.listdir(bill_data_dir) if 'session{}_'.format(session) in x]:
         filepath = os.path.join(bill_data_dir, filename)
         with open(filepath, 'r') as f:
